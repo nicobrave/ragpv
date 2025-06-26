@@ -11,14 +11,14 @@ services:
         value: 3.11.9
       - fromGroup: ragpv-secrets
 
-#  - type: worker
-#    name: data-ingestion
-#    env: python
-#    plan: free
-#    branch: main
-#    buildCommand: "pip install -r requirements.txt"
-#    startCommand: "python src/data_processing/excel_vectorizer.py"
-#    envVars:
-#      - key: PYTHON_VERSION
-#        value: 3.11
-#      - fromGroup: ragpv-secrets 
+  - type: worker
+    name: data-ingestion
+    env: python
+    plan: free
+    branch: main
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python src/data_processing/excel_vectorizer.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - fromGroup: ragpv-secrets
