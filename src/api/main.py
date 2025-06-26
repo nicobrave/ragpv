@@ -4,7 +4,7 @@ Punto de entrada principal de la aplicación FastAPI.
 Este archivo inicializa la aplicación FastAPI, configura los metadatos
 y también incluye los routers de los endpoints definidos en otros módulos.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from . import endpoints
 
 # Inicializa la instancia de la aplicación FastAPI
@@ -25,6 +25,13 @@ app = FastAPI(
 # Incluir el router de los endpoints de la API
 # Todas las rutas definidas en `endpoints.router` tendrán el prefijo `/api`
 app.include_router(endpoints.router, prefix="/api", tags=["Agente RAG"])
+
+@app.head("/", tags=["Root"])
+async def head_root():
+    """
+    Endpoint para el health check de Render, que usa el método HEAD.
+    """
+    return Response(status_code=200)
 
 @app.get("/", tags=["Root"])
 async def read_root():
