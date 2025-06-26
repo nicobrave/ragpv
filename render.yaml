@@ -11,7 +11,7 @@ services:
         value: 3.11
       - fromGroup: ragpv-secrets
 
-  - type: job
+  - type: worker
     name: data-ingestion
     env: python
     plan: free
