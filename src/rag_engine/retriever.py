@@ -10,6 +10,7 @@ import google.generativeai as genai
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from typing import List, Dict, Optional
+from langchain_core.documents import Document
 
 # Cargar variables de entorno para obtener las credenciales
 load_dotenv()
@@ -58,11 +59,13 @@ class SupabaseRetriever:
             print(f"Error al crear embedding: {e}")
             return None
 
-    def retrieve_context(self, query: str, match_count: int = 5, match_threshold: float = 0.65) -> List[Dict]:
+    def retrieve_context(self, query: str, match_count: int = 5, match_threshold: float = 0.65) -> List[Document]:
         """
         Recupera el contexto relevante para una consulta utilizando una estrategia híbrida.
+        Siempre devuelve una lista de objetos Document.
         """
         clean_query = query.strip().upper()
+        results_data = []
 
         # Estrategia 1: Búsqueda por palabra clave si se encuentra un ID en CUALQUIER LUGAR de la consulta.
         match = CONTAINER_ID_PATTERN.search(clean_query) # Usamos search() en lugar de match()
@@ -79,24 +82,35 @@ class SupabaseRetriever:
                 .execute()
             
             if response.data:
-                # Si encontramos un resultado con el ID, lo devolvemos directamente.
-                for item in response.data:
-                    item['similarity'] = 1.0
-                return response.data
+                results_data = response.data
         
         # Estrategia 2: Búsqueda semántica (fallback si no se encuentra ID o si la búsqueda por ID no da resultados)
-        print(f"--- INFO: No se detectó ID o no hubo resultados. Usando búsqueda semántica para '{query}' ---")
-        query_embedding = self._create_embedding(query)
-        if not query_embedding:
-            return []
+        if not results_data:
+            print(f"--- INFO: No se detectó ID o no hubo resultados. Usando búsqueda semántica para '{query}' ---")
+            query_embedding = self._create_embedding(query)
+            if not query_embedding:
+                return []
 
-        # Llamar a la función RPC en Supabase
-        response = self.supabase.rpc('match_documentos', {
-            'query_embedding': query_embedding,
-            'match_threshold': match_threshold,
-            'match_count': match_count,
-        }).execute()
+            # Llamar a la función RPC en Supabase
+            response = self.supabase.rpc('match_documentos', {
+                'query_embedding': query_embedding,
+                'match_threshold': match_threshold,
+                'match_count': match_count,
+            }).execute()
 
-        if response.data:
-            return response.data
-        return []
+            if response.data:
+                results_data = response.data
+
+        # Estandarizar la salida a una lista de objetos Document
+        documents = [
+            Document(
+                page_content=item.get('fragmento', ''), 
+                metadata={
+                    'source': item.get('fuente', 'desconocido'), 
+                    'id': item.get('id', 0),
+                    'similarity': item.get('similarity', None)
+                }
+            ) for item in results_data
+        ]
+        
+        return documents
