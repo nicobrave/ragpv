@@ -18,16 +18,15 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # Configurar el modelo generativo a utilizar
 GENERATIVE_MODEL = genai.GenerativeModel('gemini-1.5-flash')
 
-def generate_response(query: str, context: List[Dict]) -> str:
+def generate_response(query: str, context_str: str) -> str:
     """
     Genera una respuesta utilizando un LLM. La estrategia del prompt cambia
     dependiendo de si se encontró contexto relevante o no.
     """
     prompt = ""
 
-    if context:
+    if context_str:
         # Si hay contexto, actuamos como un experto en logística basado en datos.
-        context_str = "\n---\n".join([doc['fragmento'] for doc in context])
         prompt = f"""
 Eres un asistente experto en análisis de datos de una empresa de logística.
 Tu principal objetivo es responder basándote en el siguiente contexto extraído de la base de datos operativa.

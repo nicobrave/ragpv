@@ -74,10 +74,11 @@ class SupabaseRetriever:
             # Priorizamos la búsqueda por ID si se detecta uno.
             print(f"--- INFO: ID de contenedor detectado en la consulta. Buscando prefijo '{prefix}' y número de serie '{serial_number}' ---")
             
-            response = self.supabase.table('documentos_embeddings') \
-                .select('id, fragmento, fuente') \
-                .like('fragmento', f'%{prefix}%') \
-                .like('fragmento', f'%{serial_number}%') \
+            # Ejecutar la consulta de texto directo (case-insensitive)
+            response = self.supabase.table('documentos') \
+                .select('fragmento') \
+                .ilike('fragmento', f'%{prefix}%') \
+                .ilike('fragmento', f'%{serial_number}%') \
                 .limit(match_count) \
                 .execute()
             
