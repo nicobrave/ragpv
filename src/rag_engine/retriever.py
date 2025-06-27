@@ -15,9 +15,9 @@ from langchain_core.documents import Document
 # Cargar variables de entorno para obtener las credenciales
 load_dotenv()
 
-# Expresión regular para detectar un ID de contenedor (ej. ABCD1234567, ABCD 1234567)
+# Expresión regular para detectar un ID de contenedor (ej. ABCD123456, ABCD 123456)
 # 4 letras mayúsculas, un espacio opcional, y 6 dígitos.
-container_id_pattern = re.compile(r'([A-Z]{4})\\s?(\\d{6})')
+container_id_pattern = re.compile(r'([A-Z]{4})\s?(\d{6})')
 
 class SupabaseRetriever:
     """
@@ -74,7 +74,7 @@ class SupabaseRetriever:
             # Ejecutar la consulta de texto directo, buscando el prefijo Y el número por separado
             # para ser robusto a formatos como 'DRYU 1234567-8'
             response = self.supabase.table('documentos_embeddings') \
-                .select('fragmento') \
+                .select('fragmento, fuente') \
                 .ilike('fragmento', f'%{prefix}%') \
                 .ilike('fragmento', f'%{serial_number}%') \
                 .execute()

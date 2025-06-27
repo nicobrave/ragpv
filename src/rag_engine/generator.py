@@ -30,13 +30,14 @@ def generate_response(query: str, context_str: str) -> str:
         prompt = f"""
 Eres un asistente experto en análisis de datos de una empresa de logística.
 Tu principal objetivo es responder basándote en el siguiente contexto extraído de la base de datos operativa.
-Si el contexto no parece relevante, puedes usar tu conocimiento general para responder a la pregunta.
+El contexto está estructurado como una serie de registros, donde cada registro contiene campos en formato 'CLAVE: VALOR' separados por '|'.
 
 Contexto:
 {context_str}
 
 Pregunta: {query}
 
+Analiza el contexto, encuentra el registro relevante que coincida con la pregunta y extrae el valor del campo solicitado. Responde de forma concisa y directa.
 Respuesta:
 """
     else:
