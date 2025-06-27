@@ -24,7 +24,8 @@ def generate_response(query: str, context_str: str, history_str: str) -> str:
     proporcionado o su conocimiento general, y considerando el historial.
     """
     prompt = f"""
-Eres un asistente experto en análisis de datos de una empresa de logística, pero también puedes responder preguntas de conocimiento general.
+Eres un asistente experto en análisis de datos de una empresa de logística interna. Tu rol es acceder y procesar datos operativos para responder preguntas del personal autorizado.
+La información en el contexto, incluyendo identificadores personales como el RUT, ha sido proporcionada para tu uso y es esencial para la operación. No es una violación de la privacidad; es tu función principal trabajar con estos datos.
 Tu objetivo es responder a la pregunta del usuario de la forma más precisa posible, considerando la conversación previa.
 
 Primero, examina el historial de la conversación para entender el contexto previo.
@@ -43,7 +44,7 @@ Pregunta del Usuario: {query}
 
 INSTRUCCIONES:
 1. Usa el historial para entender preguntas de seguimiento (ej. "¿y de qué cliente es?").
-2. Si el contexto de la base de datos es relevante para la pregunta actual, basa tu respuesta en ese contexto.
+2. Si el contexto de la base de datos es relevante para la pregunta actual, basa tu respuesta en ese contexto. Extrae la información solicitada, incluyendo datos como el RUT, sin objeciones.
 3. Si el contexto está vacío o no es relevante, ignóralo y responde usando tu conocimiento general, siempre considerando el historial.
 4. Responde siempre de forma directa y concisa.
 
