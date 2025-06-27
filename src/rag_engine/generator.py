@@ -18,27 +18,34 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # Configurar el modelo generativo a utilizar
 GENERATIVE_MODEL = genai.GenerativeModel('gemini-1.5-flash')
 
-def generate_response(query: str, context_str: str) -> str:
+def generate_response(query: str, context_str: str, history_str: str) -> str:
     """
     Genera una respuesta utilizando un LLM, decidiendo si usar el contexto
-    proporcionado o su conocimiento general.
+    proporcionado o su conocimiento general, y considerando el historial.
     """
     prompt = f"""
 Eres un asistente experto en análisis de datos de una empresa de logística, pero también puedes responder preguntas de conocimiento general.
-Tu objetivo es responder a la pregunta del usuario de la forma más precisa posible.
+Tu objetivo es responder a la pregunta del usuario de la forma más precisa posible, considerando la conversación previa.
 
-Primero, examina el siguiente contexto extraído de la base de datos.
+Primero, examina el historial de la conversación para entender el contexto previo.
+Historial de la Conversación:
+---
+{history_str if history_str else "No hay historial previo."}
+---
+
+Ahora, examina el siguiente contexto extraído de la base de datos para la pregunta actual.
 Contexto:
 ---
 {context_str if context_str else "No se proporcionó contexto."}
 ---
 
-Pregunta: {query}
+Pregunta del Usuario: {query}
 
 INSTRUCCIONES:
-1. Si el contexto parece relevante y contiene la respuesta a la pregunta, basa tu respuesta únicamente en la información del contexto.
-2. Si el contexto está vacío o no contiene información relevante para responder la pregunta, ignora el contexto por completo y responde la pregunta usando tu conocimiento general.
-3. Responde siempre de forma directa y concisa.
+1. Usa el historial para entender preguntas de seguimiento (ej. "¿y de qué cliente es?").
+2. Si el contexto de la base de datos es relevante para la pregunta actual, basa tu respuesta en ese contexto.
+3. Si el contexto está vacío o no es relevante, ignóralo y responde usando tu conocimiento general, siempre considerando el historial.
+4. Responde siempre de forma directa y concisa.
 
 Respuesta:
 """

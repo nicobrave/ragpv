@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from src.rag_engine.retriever import SupabaseRetriever
 from src.rag_engine.generator import generate_response
 from .schemas import QueryRequest, QueryResponse
+from ..utils.helpers import documents_to_string
 
 # Crear una nueva instancia de APIRouter.
 # Este objeto será usado para definir todas las rutas de este módulo.
@@ -22,44 +23,28 @@ except ValueError as e:
     retriever = None
     print(f"ADVERTENCIA: No se pudo inicializar el Retriever. {e}")
 
-@router.post("/query", response_model=QueryResponse)
-async def handle_query(request: QueryRequest):
+@router.post("/query", response_model=QueryResponse, tags=["RAG"])
+async def query_agent(request: QueryRequest):
     """
-    Gestiona las consultas en lenguaje natural del usuario.
-
-    Este endpoint orquesta el flujo RAG:
-    1. Recibe la consulta del usuario.
-    2. Utiliza el `SupabaseRetriever` para encontrar el contexto relevante en la base de datos.
-    3. Pasa la consulta y el contexto al `Generator` para generar una respuesta.
-    4. Devuelve la respuesta final.
-
-    Args:
-        request (QueryRequest): La petición de consulta con el texto y otros metadatos.
-
-    Returns:
-        QueryResponse: Un objeto con la respuesta del agente y documentos fuente.
+    Recibe una consulta, recupera contexto relevante y genera una respuesta.
     """
-    if not retriever:
-        raise HTTPException(
-            status_code=503,
-            detail="El servicio no está disponible porque el retriever no pudo ser inicializado. Verifique las variables de entorno."
+    try:
+        # Recuperar contexto basado en la consulta
+        relevant_docs = retriever.retrieve_context(request.query)
+        context_str = documents_to_string(relevant_docs)
+
+        # Formatear el historial si existe
+        history_str = ""
+        if request.history:
+            history_str = "\n".join([f"{msg.rol}: {msg.contenido}" for msg in request.history])
+
+        # Generar una respuesta usando el contexto y el historial
+        final_response = generate_response(request.query, context_str, history_str)
+
+        return QueryResponse(
+            response=final_response,
+            source_documents=[doc.dict() for doc in relevant_docs]
         )
-
-    # 1. Recuperar contexto de Supabase
-    context_docs = retriever.retrieve_context(request.query)
-
-    # 2. Generar respuesta con el contexto
-    context_str = "\n".join([doc.page_content for doc in context_docs])
-    response_text = generate_response(request.query, context_str)
-
-    # Formateamos los documentos fuente para la respuesta
-    source_documents = [
-        {"source": doc.metadata.get("source", "desconocido"), "content": doc.page_content}
-        for doc in context_docs
-    ]
-
-    return QueryResponse(
-        response=response_text,
-        source_documents=source_documents,
-        session_id=request.session_id
-    )
+    except Exception as e:
+        # Loggear el error sería una buena práctica aquí
+        raise HTTPException(status_code=500, detail=str(e))
