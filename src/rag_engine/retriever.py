@@ -15,11 +15,9 @@ from langchain_core.documents import Document
 # Cargar variables de entorno para obtener las credenciales
 load_dotenv()
 
-# Patrón de regex para extraer las partes clave de un ID de contenedor en cualquier parte del texto:
-# 1. Cuatro letras (el prefijo)
-# 2. Seis o siete dígitos (el número de serie)
-# No usamos el ancla '^' para que pueda encontrarlo en cualquier lugar.
-CONTAINER_ID_PATTERN = re.compile(r'([A-Z]{4})\s?(\d{6,7})')
+# Expresión regular para detectar un ID de contenedor (ej. ABCD1234567, ABCD 1234567)
+# 4 letras mayúsculas, un espacio opcional, y 6 dígitos.
+container_id_pattern = re.compile(r'([A-Z]{4})\\s?(\\d{6})')
 
 class SupabaseRetriever:
     """
@@ -68,21 +66,21 @@ class SupabaseRetriever:
         results_data = []
 
         # Estrategia 1: Búsqueda por palabra clave si se encuentra un ID en CUALQUIER LUGAR de la consulta.
-        match = CONTAINER_ID_PATTERN.search(clean_query) # Usamos search() en lugar de match()
+        match = container_id_pattern.search(clean_query) # Usamos search() en lugar de match()
         if match:
             prefix, serial_number = match.groups()
-            # Priorizamos la búsqueda por ID si se detecta uno.
             print(f"--- INFO: ID de contenedor detectado en la consulta. Buscando prefijo '{prefix}' y número de serie '{serial_number}' ---")
             
-            # Ejecutar la consulta de texto directo (case-insensitive)
-            response = self.supabase.table('documentos') \
+            # Ejecutar la consulta de texto directo, buscando el prefijo Y el número por separado
+            # para ser robusto a formatos como 'DRYU 1234567-8'
+            response = self.supabase.table('documentos_embeddings') \
                 .select('fragmento') \
                 .ilike('fragmento', f'%{prefix}%') \
                 .ilike('fragmento', f'%{serial_number}%') \
-                .limit(match_count) \
                 .execute()
             
             if response.data:
+                print(f"--- INFO: Encontrados {len(response.data)} fragmentos por búsqueda directa. ---")
                 results_data = response.data
         
         # Estrategia 2: Búsqueda semántica (fallback si no se encuentra ID o si la búsqueda por ID no da resultados)
