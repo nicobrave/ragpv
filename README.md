@@ -1,51 +1,64 @@
-# RAG-Based Agent for Operational Data Analysis
+# RAGPV - Agente de Análisis de Datos Logísticos
 
-## Project Overview
-This project aims to create an intelligent RAG-based agent system for operational data analysis. The agent will support multiple data formats, integrate with various systems, and provide insightful, context-aware responses.
+Este proyecto es un agente de IA basado en el patrón RAG (Retrieval-Augmented Generation) diseñado para responder preguntas sobre datos operativos de una empresa de logística, utilizando un archivo Excel como fuente de conocimiento.
 
-## Architecture
+## Tech Stack
 
-### Core Technologies
-- **Orchestration**: n8n workflows
-- **Database**: Supabase (PostgreSQL + pgvector for Vector Store)
-- **AI Models**: OpenAI GPT-4 + Embeddings / Google Gemini
-- **Trigger**: WhatsApp Integration
-- **Future Integrations**: AWS, SAP, AXIS
+- **Backend:** FastAPI
+- **Base de Datos Vectorial:** Supabase (con la extensión `pgvector`)
+- **Modelos de IA:** Google Gemini (para embeddings y generación de texto)
+- **Despliegue:** Render
 
-### System Components
-1.  **Data Ingestion Pipeline**: Processes and vectorizes data from Excel, PDF, Word, and audio files.
-2.  **RAG Agent Core**: Performs vector similarity searches, generates context-aware responses, and can create new documents.
-3.  **Integration Layer**: Connects with operational data sources, with future plans for financial (SAP) and HR (AXIS) systems.
+## Configuración del Entorno Local
 
-## Data Schema
-The primary data source is an Excel file with 39 columns, including `CONTENEDOR`, `CLIENTE`, `CONDUCTOR`, `FECHA_VIAJE`, and `ESTADO`.
+Para ejecutar el proyecto localmente, es necesario crear un archivo `.env` en la raíz del proyecto con las siguientes variables:
 
-## Project Structure
-The project is organized into the following main directories:
-- `src/`: Contains all the Python source code for data processing, the RAG engine, API, and integrations.
-- `n8n-workflows/`: Holds the JSON definitions for n8n automation workflows.
-- `database/`: Includes the Supabase SQL schema and sample data.
-- `data/`: Storage for raw data files like the main Excel sheet.
+```
+GOOGLE_API_KEY="tu_api_key_de_google"
+SUPABASE_URL="la_url_de_tu_proyecto_supabase"
+SUPABASE_KEY="la_anon_key_de_tu_proyecto_supabase"
+```
 
-## Getting Started
+## Ejecución Local
 
-### Prerequisites
-- Python 3.9+
-- Pip
-- A Supabase account
-- API keys for OpenAI/Google Gemini
-
-### Setup
-1.  Clone the repository.
-2.  Create a virtual environment:
+1.  Asegúrate de tener Python 3.11 y `pip` instalados.
+2.  Crea y activa un entorno virtual:
     ```bash
-    python -m venv venv
+    python3.11 -m venv venv
     source venv/bin/activate
     ```
-3.  Install dependencies:
+3.  Instala las dependencias:
     ```bash
     pip install -r requirements.txt
     ```
-4.  Create a `.env` file from the `.env.example` and fill in your credentials.
-5.  Set up the database schema by running the script in `database/supabase_schema.sql` in your Supabase SQL Editor. **Note**: You must enable the `vector` extension in Supabase first.
-# ragpv
+4.  Ejecuta el servidor de desarrollo:
+    ```bash
+    uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ```
+    El servidor estará disponible en `http://localhost:8000`.
+
+## Ingesta de Datos
+
+Para poblar la base de datos vectorial, ejecuta el script `excel_vectorizer.py`:
+
+```bash
+python src/data_processing/excel_vectorizer.py
+```
+Asegúrate de que el archivo `data/BD_Contenedores_Completo_2025.xlsx` exista.
+
+## Uso de la API
+
+El endpoint principal para realizar consultas es `/api/query`.
+
+### Ejemplo de Consulta con `curl`
+
+```bash
+curl -X 'POST' \
+  'https://ragpv-api.onrender.com/api/query' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "¿Cual es el estado del contenedor TCNU5754568?"
+  }'
+```
+
+La respuesta será un JSON con el texto generado por la IA.
