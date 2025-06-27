@@ -65,40 +65,56 @@ class SupabaseRetriever:
         clean_query = query.strip().upper()
         results_data = []
 
+        # --- LOGS DE DEPURACIÓN PARA RENDER ---
+        print(f"--- RENDER_DEBUG: Query recibida: '{query}'")
+        print(f"--- RENDER_DEBUG: Query normalizada: '{clean_query}'")
+        print(f"--- RENDER_DEBUG: Regex pattern: r'([A-Z]{4})\\s?(\\d{6})'")
+        
         # Estrategia 1: Búsqueda por palabra clave si se encuentra un ID en CUALQUIER LUGAR de la consulta.
-        match = container_id_pattern.search(clean_query) # Usamos search() en lugar de match()
+        match = container_id_pattern.search(clean_query)
+        print(f"--- RENDER_DEBUG: Resultado de la regex (match): {match}")
+
         if match:
             prefix, serial_number = match.groups()
-            print(f"--- INFO: ID de contenedor detectado en la consulta. Buscando prefijo '{prefix}' y número de serie '{serial_number}' ---")
+            print(f"--- RENDER_DEBUG: ID de contenedor detectado. Buscando prefijo '{prefix}' y número de serie '{serial_number}' ---")
             
-            # Ejecutar la consulta de texto directo, buscando el prefijo Y el número por separado
-            # para ser robusto a formatos como 'DRYU 1234567-8'
-            response = self.supabase.table('documentos_embeddings') \
-                .select('fragmento, fuente') \
-                .ilike('fragmento', f'%{prefix}%') \
-                .ilike('fragmento', f'%{serial_number}%') \
-                .execute()
-            
-            if response.data:
-                print(f"--- INFO: Encontrados {len(response.data)} fragmentos por búsqueda directa. ---")
-                results_data = response.data
+            try:
+                # Ejecutar la consulta de texto directo, buscando el prefijo Y el número por separado
+                response = self.supabase.table('documentos_embeddings') \
+                    .select('fragmento, fuente') \
+                    .ilike('fragmento', f'%{prefix}%') \
+                    .ilike('fragmento', f'%{serial_number}%') \
+                    .execute()
+                
+                print(f"--- RENDER_DEBUG: Supabase response data: {response.data}")
+                
+                if response.data:
+                    print(f"--- RENDER_DEBUG: Encontrados {len(response.data)} fragmentos por búsqueda directa. ---")
+                    results_data = response.data
+            except Exception as e:
+                print(f"--- RENDER_DEBUG: EXCEPCIÓN durante la búsqueda en Supabase: {e}")
         
         # Estrategia 2: Búsqueda semántica (fallback si no se encuentra ID o si la búsqueda por ID no da resultados)
         if not results_data:
-            print(f"--- INFO: No se detectó ID o no hubo resultados. Usando búsqueda semántica para '{query}' ---")
+            print(f"--- RENDER_DEBUG: No se detectó ID o no hubo resultados. Usando búsqueda semántica para '{query}' ---")
             query_embedding = self._create_embedding(query)
             if not query_embedding:
+                print("--- RENDER_DEBUG: Falló la creación del embedding.")
                 return []
 
+            print("--- RENDER_DEBUG: Embedding creado. Ejecutando RPC match_documentos.")
             # Llamar a la función RPC en Supabase
-            response = self.supabase.rpc('match_documentos', {
-                'query_embedding': query_embedding,
-                'match_threshold': match_threshold,
-                'match_count': match_count,
-            }).execute()
-
-            if response.data:
-                results_data = response.data
+            try:
+                response = self.supabase.rpc('match_documentos', {
+                    'query_embedding': query_embedding,
+                    'match_threshold': match_threshold,
+                    'match_count': match_count,
+                }).execute()
+                print(f"--- RENDER_DEBUG: Respuesta de búsqueda semántica: {response.data}")
+                if response.data:
+                    results_data = response.data
+            except Exception as e:
+                print(f"--- RENDER_DEBUG: EXCEPCIÓN durante la búsqueda semántica en Supabase: {e}")
 
         # Estandarizar la salida a una lista de objetos Document
         documents = [
@@ -112,4 +128,5 @@ class SupabaseRetriever:
             ) for item in results_data
         ]
         
+        print(f"--- RENDER_DEBUG: Documentos finales a retornar: {len(documents)}")
         return documents
