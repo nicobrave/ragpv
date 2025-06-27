@@ -20,32 +20,25 @@ GENERATIVE_MODEL = genai.GenerativeModel('gemini-1.5-flash')
 
 def generate_response(query: str, context_str: str) -> str:
     """
-    Genera una respuesta utilizando un LLM. La estrategia del prompt cambia
-    dependiendo de si se encontró contexto relevante o no.
+    Genera una respuesta utilizando un LLM, decidiendo si usar el contexto
+    proporcionado o su conocimiento general.
     """
-    prompt = ""
+    prompt = f"""
+Eres un asistente experto en análisis de datos de una empresa de logística, pero también puedes responder preguntas de conocimiento general.
+Tu objetivo es responder a la pregunta del usuario de la forma más precisa posible.
 
-    if context_str:
-        # Si hay contexto, actuamos como un experto en logística basado en datos.
-        prompt = f"""
-Eres un asistente experto en análisis de datos de una empresa de logística.
-Tu principal objetivo es responder basándote en el siguiente contexto extraído de la base de datos operativa.
-El contexto está estructurado como una serie de registros, donde cada registro contiene campos en formato 'CLAVE: VALOR' separados por '|'.
-
+Primero, examina el siguiente contexto extraído de la base de datos.
 Contexto:
-{context_str}
+---
+{context_str if context_str else "No se proporcionó contexto."}
+---
 
 Pregunta: {query}
 
-Analiza el contexto, encuentra el registro relevante que coincida con la pregunta y extrae el valor del campo solicitado. Responde de forma concisa y directa.
-Respuesta:
-"""
-    else:
-        # Si no hay contexto, actuamos como un asistente de conocimiento general.
-        prompt = f"""
-Eres un asistente servicial. Responde la siguiente pregunta de la manera más directa y útil posible.
-
-Pregunta: {query}
+INSTRUCCIONES:
+1. Si el contexto parece relevante y contiene la respuesta a la pregunta, basa tu respuesta únicamente en la información del contexto.
+2. Si el contexto está vacío o no contiene información relevante para responder la pregunta, ignora el contexto por completo y responde la pregunta usando tu conocimiento general.
+3. Responde siempre de forma directa y concisa.
 
 Respuesta:
 """
