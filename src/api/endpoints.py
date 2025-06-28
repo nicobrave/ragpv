@@ -113,9 +113,14 @@ consultar_bd_tool = {
         }
     }
 }
+
+# La estructura de 'tools' espera una lista de diccionarios, donde cada diccionario
+# representa una 'Tool' y contiene la clave 'function_declarations'.
+tools_list = [{"function_declarations": [consultar_bd_tool]}]
+
 # La forma moderna de pasar herramientas es directamente en la inicialización del modelo.
 # Esto evita problemas de compatibilidad de versiones con la clase 'Tool'.
-gemini_pro_model = GenerativeModel("gemini-2.5-pro", tools=[consultar_bd_tool])
+gemini_pro_model = GenerativeModel("gemini-2.5-pro", tools=tools_list)
 gemini_flash_model = GenerativeModel("gemini-1.5-flash") # Modelo para refinamiento
 
 @router.post("/query", response_model=QueryResponse, tags=["RAG"])
