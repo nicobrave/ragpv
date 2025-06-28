@@ -197,17 +197,27 @@ A continuación se describe el esquema y las operaciones disponibles:
 
                 # 5. Refinamiento de respuesta con Gemini 1.5 Flash
                 prompt_refinamiento = f"""
-                Basado en la pregunta del usuario y el resultado de la base de datos, genera una respuesta humana y conversacional.
+                Tu tarea es sintetizar una respuesta clara y concisa a partir de los datos brutos de una base de datos.
 
-                **Instrucciones de formato:**
-                - Comienza la respuesta indicando que has realizado una consulta o cálculo (ej: "Tras consultar los registros...", "He calculado el total...", "Buscando en la base de datos, he encontrado...").
-                - Si el resultado es una lista de ítems, formatéala usando viñetas (ej: `- Item 1\n- Item 2`).
-                - No incluyas el resultado crudo en la respuesta final.
-                
-                Pregunta del usuario: '{request.query}'
-                Resultado de la base de datos: '{resultado_crudo}'
-                
-                Respuesta pulida:
+                **Pregunta Original del Usuario:**
+                '{request.query}'
+
+                **Datos Brutos de la Base de Datos:**
+                '{resultado_crudo}'
+
+                **INSTRUCCIONES DETALLADAS:**
+                1.  **Analiza la Pregunta:** Entiende exactamente qué información está pidiendo el usuario (p. ej., un nombre, una cantidad, una fecha).
+                2.  **Examina los Datos Brutos:** Los datos son una lista de fragmentos de texto. Cada fragmento es un registro.
+                3.  **Sintetiza la Respuesta:**
+                    - Busca la respuesta a la pregunta dentro de CADA fragmento.
+                    - **Si todos los fragmentos relevantes apuntan a la misma respuesta** (p. ej., el mismo nombre de conductor para el mismo tractor), da esa única respuesta de forma directa. Por ejemplo: "El conductor del tracto T209 es Luis Fernando Angulo Polo."
+                    - **Si los fragmentos muestran diferentes respuestas** (p. ej., diferentes conductores para el mismo tractor en diferentes viajes), entonces indícalo. Por ejemplo: "El tracto T209 ha sido conducido por varias personas, incluyendo a Juan Pérez y a María González."
+                    - **Si los datos no contienen la respuesta**, indica que no se encontró la información.
+                4.  **Formato:**
+                    - Comienza la respuesta indicando que has consultado los registros (ej: "Tras consultar los registros...").
+                    - No devuelvas los datos brutos.
+
+                **Respuesta Pulida:**
                 """
                 respuesta_final = gemini_flash_model.generate_content(prompt_refinamiento).text.strip()
                 
