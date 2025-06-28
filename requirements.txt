@@ -4,7 +4,7 @@ uvicorn==0.24.0.post1
 pydantic==2.5.0
 
 # --- AI & Embeddings ---
-google-generativeai==0.3.2
+google-generativeai==0.5.4
 langchain-core==0.1.52
 
 # --- Base de Datos ---
