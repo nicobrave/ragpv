@@ -49,68 +49,71 @@ def _to_serializable(data):
         return {key: _to_serializable(value) for key, value in data.items()}
     return data
 
-def consultar_bd(tabla: str, operacion: str, p_columna_regex: str = None, filtros: dict = None) -> any:
+def consultar_bd(operacion: str, columna_regex: str = None, filtro_fragmento: str = None) -> any:
     """
-    Ejecuta una consulta en Supabase y devuelve un resultado serializable.
+    Ejecuta una consulta simplificada en Supabase y devuelve un resultado serializable.
     """
-    logging.info(f"Ejecutando consultar_bd: tabla={tabla}, operacion={operacion}, filtros={filtros}, regex={p_columna_regex}")
+    logging.info(f"Ejecutando consultar_bd: operacion={operacion}, filtro_fragmento={filtro_fragmento}, regex={columna_regex}")
+
+    # Construir los filtros si se proporciona el parámetro.
+    # Las funciones RPC esperan un objeto JSON para los filtros.
+    p_filtros = None
+    if filtro_fragmento:
+        # Se busca el texto en cualquier parte del fragmento.
+        p_filtros = {'fragmento': f'%{filtro_fragmento}%'}
 
     # Operaciones que usan RPC para extraer con Regex
     if operacion.upper() in ["SUM", "AVG", "MAX", "MIN"]:
-        if not p_columna_regex or not filtros:
-            raise ValueError("SUM/AVG/MAX/MIN requieren p_columna_regex y filtros.")
+        if not columna_regex or not p_filtros:
+            raise ValueError("SUM/AVG/MAX/MIN requieren columna_regex y filtro_fragmento.")
         response = supabase.rpc('agregar_columna', {
             'p_operacion': operacion.upper(),
-            'p_columna_regex': p_columna_regex,
-            'p_filtros': filtros
+            'p_columna_regex': columna_regex,
+            'p_filtros': p_filtros
         }).execute()
         return _to_serializable(response.data)
     elif operacion.upper() == "SELECT DISTINCT":
-        if not p_columna_regex or not filtros:
-            raise ValueError("SELECT DISTINCT requiere p_columna_regex y filtros.")
+        if not columna_regex or not p_filtros:
+            raise ValueError("SELECT DISTINCT requiere columna_regex y filtro_fragmento.")
         response = supabase.rpc('seleccionar_distintos', {
-            'p_columna_regex': p_columna_regex,
-            'p_filtros': filtros
+            'p_columna_regex': columna_regex,
+            'p_filtros': p_filtros
         }).execute()
         return _to_serializable(response.data)
 
     # Operaciones que usan la query builder estándar de Supabase
-    query = supabase.table(tabla)
+    query = supabase.table('documentos_embeddings')
     
     if operacion.upper() == "COUNT":
-        # Para COUNT, el filtro se aplica después de la selección
-        count_query = query.select('*', count='exact')
-        if filtros:
-            for campo, valor in filtros.items():
-                count_query = count_query.ilike(campo, f'%{valor}%')
-        response = count_query.execute()
+        query = query.select('*', count='exact')
+        if filtro_fragmento:
+            query = query.ilike('fragmento', f'%{filtro_fragmento}%')
+        response = query.execute()
         return response.count
     
     if operacion.upper() == "SELECT":
-        # Para SELECT, se aplica el filtro sobre la selección
-        select_query = query.select('fragmento')
-        if filtros:
-            for campo, valor in filtros.items():
-                select_query = select_query.ilike(campo, f'%{valor}%')
+        query = query.select('fragmento')
+        if filtro_fragmento:
+            query = query.ilike('fragmento', f'%{filtro_fragmento}%')
         
         # Se limita a 10 para no sobrecargar el contexto del LLM
-        response = select_query.limit(10).execute()
+        response = query.limit(10).execute()
         return _to_serializable(response.data)
 
     raise ValueError(f"Operación no soportada: {operacion}")
 
-# Declaración de la herramienta para Gemini
+# Declaración de la herramienta para Gemini (versión simplificada)
 consultar_bd_tool = {
     "name": "consultar_bd",
-    "description": "Consulta la base de datos logística con filtros y operaciones flexibles. Úsala para contar, agregar, o recuperar información específica.",
+    "description": "Consulta la base de datos logística. Úsala para contar, agregar o recuperar información específica de la columna 'fragmento'.",
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "tabla": {"type": "STRING", "description": "Nombre de la tabla a consultar (siempre 'documentos_embeddings')."},
-            "operacion": {"type": "STRING", "description": "Operación: SELECT, COUNT, SUM, AVG, MAX, MIN, SELECT DISTINCT."},
-            "columna": {"type": "STRING", "description": "Regex para extraer un valor de la columna 'fragmento'. Requerido para SUM, AVG, MAX, MIN, SELECT DISTINCT."},
-            "filtros": {"type": "OBJECT", "description": "Filtros a aplicar sobre la columna 'fragmento' (clave: valor)."}
-        }
+            "operacion": {"type": "STRING", "description": "La operación a realizar: SELECT, COUNT, SUM, AVG, MAX, MIN, SELECT DISTINCT."},
+            "columna_regex": {"type": "STRING", "description": "Expresión regular (regex) de PostgreSQL para extraer un valor del 'fragmento'. OBLIGATORIO para SUM, AVG, MAX, MIN y SELECT DISTINCT."},
+            "filtro_fragmento": {"type": "STRING", "description": "Texto a buscar en la columna 'fragmento' para filtrar los resultados. Úsalo para buscar por códigos de tractor, IDs de contenedor, etc."}
+        },
+        "required": ["operacion"]
     }
 }
 
@@ -151,20 +154,18 @@ A continuación se describe el esquema y las operaciones disponibles:
   - **Descripción**: Contiene fragmentos de texto de un Excel sobre operaciones logísticas.
   - **Columnas relevantes**: `fragmento`. Todos los datos están en esta columna.
 
-## Operaciones disponibles:
-- `SELECT`: para recuperar los fragmentos de texto completos que coinciden con los filtros. Úsalo para preguntas generales de información.
-- `COUNT`: para contar filas.
-- `SUM`, `AVG`, `MAX`, `MIN`: para operaciones numéricas.
-- `SELECT DISTINCT`: para obtener listas de valores únicos.
+## Herramienta disponible: `consultar_bd`
+- **Descripción**: Ejecuta operaciones en la base de datos.
+- **Parámetros**:
+  - `operacion`: `SELECT`, `COUNT`, `SUM`, `AVG`, `MAX`, `MIN`, `SELECT DISTINCT`.
+  - `columna_regex`: OBLIGATORIO para `SUM`, `AVG`, `MAX`, `MIN`, `SELECT DISTINCT`. Es una regex para extraer un número o texto.
+  - `filtro_fragmento`: El texto a buscar en la base de datos para filtrar.
 
-## Instrucciones
-1.  Analiza la pregunta del usuario y el historial. Si la pregunta es de seguimiento (usa términos como "ese", "el mismo", "ellos"), utiliza el historial para completar los filtros de la función. Por ejemplo, si el historial habla del contenedor X y la pregunta es "¿cuántos viajes hizo?", debes usar el contenedor X en el filtro.
-2.  Si la pregunta requiere una operación en la BD, llama a la función `consultar_bd`.
-3.  **Para el parámetro 'columna', proporciona un patrón de expresión regular (regex) de PostgreSQL para extraer el valor del texto del 'fragmento'. Este parámetro es OBLIGATORIO para SUM, AVG, MAX, MIN y SELECT DISTINCT.**
-4.  Para la operación `SELECT` y `COUNT`, no necesitas proporcionar el parámetro 'columna'.
-5.  **Usa siempre la tabla `documentos_embeddings`.**
-6.  Aplica filtros de texto sobre la columna `fragmento`.
-7.  **Crítico**: Siempre que la pregunta del usuario contenga un identificador (como un código de tractor 'T209', un ID de contenedor, un RUT, etc.), DEBES usarlo en el parámetro 'filtros'. Una consulta SELECT sin filtros es inútil porque devuelve registros no relacionados. Analiza la pregunta para encontrar el filtro correcto.
+## Instrucciones Clave
+1.  Analiza la pregunta del usuario y el historial. Si es una pregunta de seguimiento, usa el historial para completar los parámetros.
+2.  **CRÍTICO**: Si la pregunta contiene un identificador (ej. un código de tractor 'T209', un ID de contenedor), DEBES usarlo en el parámetro `filtro_fragmento`. Las consultas sin filtro no son útiles.
+3.  Usa `columna_regex` cuando necesites operar sobre un valor específico dentro del texto (ej. sumar los "Kilos").
+4.  Si la pregunta es general y no contiene un filtro claro (ej. "¿quiénes son los conductores?"), NO llames a la función. En su lugar, responde que se necesita más información.
 
 ---
 **Historial:**
@@ -181,40 +182,18 @@ A continuación se describe el esquema y las operaciones disponibles:
             function_call = response.candidates[0].content.parts[0].function_call
             if function_call.name == "consultar_bd":
                 
-                # --- INICIO: CORRECCIÓN Y LOGS DE DEPURACIÓN ---
                 logging.basicConfig(level=logging.INFO)
                 
                 # Convertir los argumentos de Gemini a un dict de Python estándar
                 args_dict = _to_serializable(function_call.args)
                 
-                # Adaptar el nombre del parámetro para la llamada a la función Python
-                if 'columna' in args_dict:
-                    args_dict['p_columna_regex'] = args_dict.pop('columna')
-                
-                # Rellenar tabla por defecto si Gemini no la proporciona
-                if 'tabla' not in args_dict:
-                    args_dict['tabla'] = 'documentos_embeddings'
-
-                # --- INICIO: MEDIDA DE SEGURIDAD ---
-                # Forzar que todos los filtros de texto apunten a la columna 'fragmento'
-                if 'filtros' in args_dict and args_dict['filtros']:
-                    # Concatenamos todos los valores de los filtros en uno solo para buscar en 'fragmento'
-                    search_value = " ".join(str(v) for v in args_dict['filtros'].values())
-                    args_dict['filtros'] = {'fragmento': search_value}
-                # --- FIN: MEDIDA DE SEGURIDAD ---
-
-                logging.info("--- INICIANDO LLAMADA A FUNCIÓN (CORREGIDO) ---")
-                logging.info(f"Argumentos recibidos de Gemini (tipo original): {type(function_call.args)}")
-                logging.info(f"Argumentos convertidos a dict: {args_dict}")
-                # --- FIN: CORRECCIÓN Y LOGS DE DEPURACIÓN ---
+                logging.info("--- INICIANDO LLAMADA A FUNCIÓN (SIMPLIFICADO) ---")
+                logging.info(f"Argumentos recibidos de Gemini: {args_dict}")
 
                 resultado_crudo = consultar_bd(**args_dict)
 
-                # --- INICIO: LOGS DE DEPURACIÓN ---
-                logging.info(f"Resultado de consultar_bd (tipo): {type(resultado_crudo)}")
                 logging.info(f"Resultado de consultar_bd (valor): {resultado_crudo}")
                 logging.info("--- FIN DE LLAMADA A FUNCIÓN ---")
-                # --- FIN: LOGS DE DEPURACIÓN ---
 
                 # 5. Refinamiento de respuesta con Gemini 1.5 Flash
                 prompt_refinamiento = f"""
