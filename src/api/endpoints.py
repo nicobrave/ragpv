@@ -128,11 +128,6 @@ async def query_agent(request: QueryRequest):
     """
     Recibe una consulta, decide si usar function calling o RAG, y genera una respuesta.
     """
-    # --- INICIO: LOG ESPÍA ---
-    # Imprimimos la petición completa que recibimos para depurar el user_id desde n8n.
-    # Se usa ERROR para forzar la visibilidad en los logs de Render.
-    logging.error(f"PETICIÓN RECIBIDA: {request.model_dump_json(indent=2)}")
-    # --- FIN: LOG ESPÍA ---
     try:
         # 1. Recuperar historial de conversación
         historial_str = ""
