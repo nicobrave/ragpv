@@ -128,6 +128,10 @@ async def query_agent(request: QueryRequest):
     """
     Recibe una consulta, decide si usar function calling o RAG, y genera una respuesta.
     """
+    # --- INICIO: LOG ESPÍA ---
+    # Imprimimos la petición completa que recibimos para depurar el user_id desde n8n.
+    logging.info(f"PETICIÓN RECIBIDA: {request.model_dump_json(indent=2)}")
+    # --- FIN: LOG ESPÍA ---
     try:
         # 1. Recuperar historial de conversación
         historial_str = ""
@@ -154,7 +158,7 @@ A continuación se describe el esquema y las operaciones disponibles:
 - `SELECT DISTINCT`: para obtener listas de valores únicos.
 
 ## Instrucciones
-1.  Analiza la pregunta del usuario y el historial.
+1.  Analiza la pregunta del usuario y el historial. Si la pregunta es de seguimiento (usa términos como "ese", "el mismo", "ellos"), utiliza el historial para completar los filtros de la función. Por ejemplo, si el historial habla del contenedor X y la pregunta es "¿cuántos viajes hizo?", debes usar el contenedor X en el filtro.
 2.  Si la pregunta requiere una operación en la BD, llama a la función `consultar_bd`.
 3.  **Para el parámetro 'columna', proporciona un patrón de expresión regular (regex) de PostgreSQL para extraer el valor del texto del 'fragmento'. Este parámetro es OBLIGATORIO para SUM, AVG, MAX, MIN y SELECT DISTINCT.**
 4.  Para la operación `SELECT` y `COUNT`, no necesitas proporcionar el parámetro 'columna'.
