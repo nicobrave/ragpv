@@ -104,17 +104,18 @@ consultar_bd_tool = {
     "name": "consultar_bd",
     "description": "Consulta la base de datos logística con filtros y operaciones flexibles. Úsala para contar, agregar, o recuperar información específica.",
     "parameters": {
-        "type": "object",
+        "type": "OBJECT",
         "properties": {
-            "tabla": {"type": "string", "description": "Nombre de la tabla a consultar (siempre 'documentos_embeddings')."},
-            "operacion": {"type": "string", "description": "Operación: SELECT, COUNT, SUM, AVG, MAX, MIN, SELECT DISTINCT."},
-            "columna": {"type": "string", "description": "Regex para extraer un valor de la columna 'fragmento'. Requerido para SUM, AVG, MAX, MIN, SELECT DISTINCT."},
-            "filtros": {"type": "object", "description": "Filtros a aplicar sobre la columna 'fragmento' (clave: valor)."}
+            "tabla": {"type": "STRING", "description": "Nombre de la tabla a consultar (siempre 'documentos_embeddings')."},
+            "operacion": {"type": "STRING", "description": "Operación: SELECT, COUNT, SUM, AVG, MAX, MIN, SELECT DISTINCT."},
+            "columna": {"type": "STRING", "description": "Regex para extraer un valor de la columna 'fragmento'. Requerido para SUM, AVG, MAX, MIN, SELECT DISTINCT."},
+            "filtros": {"type": "OBJECT", "description": "Filtros a aplicar sobre la columna 'fragmento' (clave: valor)."}
         }
     }
 }
-tools = genai_types.Tool(function_declarations=[consultar_bd_tool])
-gemini_pro_model = GenerativeModel("gemini-2.5-pro", tools=[tools])
+# La forma moderna de pasar herramientas es directamente en la inicialización del modelo.
+# Esto evita problemas de compatibilidad de versiones con la clase 'Tool'.
+gemini_pro_model = GenerativeModel("gemini-2.5-pro", tools=[consultar_bd_tool])
 gemini_flash_model = GenerativeModel("gemini-1.5-flash") # Modelo para refinamiento
 
 @router.post("/query", response_model=QueryResponse, tags=["RAG"])
