@@ -146,7 +146,7 @@ async def query_agent(request: QueryRequest):
 Eres un asistente de base de datos. Tu objetivo es ayudar a los usuarios a consultar una base de datos de logística.
 A continuación se describe el esquema y las operaciones disponibles:
 
-## Esquema de la Base de Datos
+# Esquema de la Base de Datos
 - **Tabla principal**: `documentos_embeddings`
   - **Descripción**: Contiene fragmentos de texto de un Excel sobre operaciones logísticas.
   - **Columnas relevantes**: `fragmento`. Todos los datos están en esta columna.
