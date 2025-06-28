@@ -128,6 +128,11 @@ async def query_agent(request: QueryRequest):
     """
     Recibe una consulta, decide si usar function calling o RAG, y genera una respuesta.
     """
+    # --- INICIO: BOMBA DE HUMO ---
+    # Forzamos un error para verificar si el nuevo código se está ejecutando.
+    raise ValueError("ESTA ES LA NUEVA VERSION DEL CODIGO")
+    # --- FIN: BOMBA DE HUMO ---
+    
     # --- INICIO: LOG ESPÍA ---
     # Imprimimos la petición completa que recibimos para depurar el user_id desde n8n.
     logging.info(f"PETICIÓN RECIBIDA: {request.model_dump_json(indent=2)}")
