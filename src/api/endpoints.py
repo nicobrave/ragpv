@@ -267,5 +267,6 @@ A continuación se describe el esquema y las operaciones disponibles:
         return QueryResponse(response=respuesta_final, source_documents=[doc.dict() for doc in relevant_docs])
 
     except Exception as e:
-        # Loggear el error sería una buena práctica aquí
+        # Loggear el error de forma explícita para depuración en Render
+        logging.error(f"Error no controlado en query_agent: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
