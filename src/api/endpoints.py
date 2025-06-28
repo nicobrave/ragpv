@@ -164,6 +164,7 @@ A continuación se describe el esquema y las operaciones disponibles:
 4.  Para la operación `SELECT` y `COUNT`, no necesitas proporcionar el parámetro 'columna'.
 5.  **Usa siempre la tabla `documentos_embeddings`.**
 6.  Aplica filtros de texto sobre la columna `fragmento`.
+7.  **Crítico**: Siempre que la pregunta del usuario contenga un identificador (como un código de tractor 'T209', un ID de contenedor, un RUT, etc.), DEBES usarlo en el parámetro 'filtros'. Una consulta SELECT sin filtros es inútil porque devuelve registros no relacionados. Analiza la pregunta para encontrar el filtro correcto.
 
 ---
 **Historial:**
